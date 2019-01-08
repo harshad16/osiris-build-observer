@@ -45,9 +45,12 @@ objects:
             name: python:latest
             namespace: openshift
       triggers:
+      - type: GitHub
+        github:
+          secret: "osiris-observer-build-trigger"
       - type: ConfigChange
       - type: ImageChange
-        imageChange: {}
+        automatic: {}
 
 parameters:
   - description: Name of the github repository for Thoth's Osiris Observer

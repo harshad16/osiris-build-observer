@@ -43,6 +43,7 @@ objects:
           deploymentconfig: osiris-observer
           service: osiris-observer
       spec:
+        replicas: 1
         containers:
         - image: osiris-observer:latest
           name: osiris-observer
