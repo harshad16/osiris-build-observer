@@ -1,7 +1,12 @@
 #!/bin/env python
 # Osiris: Build log aggregator.
 
-"""Observer module."""
+"""Observer module.
+
+This module observer OpenShift namespace and watches for build events.
+When such event occur, it puts it to [Osiris](https://github.com/CermakM/osiris)
+endpoint for further processing.
+"""
 
 import os
 import requests
@@ -32,19 +37,26 @@ urllib3.disable_warnings(category=urllib3.exceptions.InsecureRequestWarning)
 _LOGGER = daiquiri.getLogger()
 
 _OSIRIS_HOST_NAME = os.getenv("OSIRIS_HOST_NAME", "http://0.0.0.0")
-_OSIRIS_PORT_PORT = os.getenv("OSIRIS_HOST_PORT", "5000")
+_OSIRIS_HOST_PORT = os.getenv("OSIRIS_HOST_PORT", "5000")
 _OSIRIS_BUILD_START_HOOK = "/build/started"
 _OSIRIS_BUILD_COMPLETED_HOOK = "/build/completed"
 
 _THOTH_DEPLOYMENT_NAME = os.getenv('THOTH_DEPLOYMENT_NAME')  # TODO: get from oc/kube config?
 
-_KUBE_CONFIG = kubernetes.client.Configuration()
-_KUBE_CONFIG.verify_ssl = False  # TODO: this should be fixed when running in cluster by load_incluster_config
+_KUBE_CONFIG = kubernetes.config.load_incluster_config()
+_KUBE_CONFIG.verify_ssl = False
 
 _REQUESTS_MAX_RETRIES = 10
 
 
 class RetrySession(requests.Session):
+
+    """RetrySession class.
+
+    RetrySession attempts to retry failed requests and timeouts
+    and holds the state between requests. Request periods are
+    progressively prolonged for a certain amount of retries.
+    """
 
     def __init__(self,
                  adapter_prefixes: typing.List[str] = None,
@@ -69,6 +81,7 @@ class RetrySession(requests.Session):
 
 
 def new_observer() -> kubernetes.client.CoreV1Api:
+    """Create new api client."""
     kubernetes.config.load_kube_config(client_configuration=_KUBE_CONFIG)
 
     kube_api = kubernetes.client.ApiClient(_KUBE_CONFIG)
@@ -105,7 +118,7 @@ if __name__ == "__main__":
     with RetrySession() as session:
 
         put_request = requests.Request(
-                url=':'.join([_OSIRIS_HOST, _OSIRIS_PORT]),
+                url=':'.join([_OSIRIS_HOST_NAME, _OSIRIS_HOST_PORT]),
                 method='PUT',
                 headers={'content-type': 'application/json'}
         )
