@@ -1,0 +1,73 @@
+apiVersion: v1
+kind: Template
+metadata:
+  name: osiris-observer-deploymentconfig
+  annotations:
+    description: >
+      This is Osiris Observer DeploymentConfig Template.
+    openshift.io/display-name: 'Thoth: Osiris Observer'
+    tags: ai-stacks,aistacks,build,build-aggregator,build-analysis,thoth,osiris,osiris-observer
+    template.openshift.io/documentation-url: https://github.com/Thoth-Station/
+    template.openshift.io/long-description: >
+      This is Osiris Observer DeploymentConfig Template.
+    template.openshift.io/provider-display-name: Red Hat, Inc.
+  labels:
+    template: osiris-observer-deploymentconfig
+    app: osiris
+    component: osiris-observer
+
+- apiVersion: v1
+  kind: DeploymentConfig
+  metadata:
+    creationTimestamp: null
+    labels:
+      app: osiris
+      component: osiris-observer
+    name: osiris-observer
+  spec:
+    selector:
+      app: osiris
+      component: osiris-observer
+      deploymentconfig: osiris-observer
+      service: osiris-observer
+    strategy:
+      resources: {}
+    template:
+      metadata:
+        creationTimestamp: null
+        labels:
+          app: osiris
+          component: osiris-observer
+          deploymentconfig: osiris-observer
+          service: osiris-observer
+      spec:
+        containers:
+        - image: osiris-observer:latest
+          name: osiris-observer
+          resources: {}
+          env:
+          - name: OSIRIS_HOST_NAME
+            valueFrom:
+              configMapKeyRef:
+                key: OSIRIS_HOST_NAME
+                name: osiris
+          - name: OSIRIS_HOST_PORT
+            valueFrom:
+              configMapKeyRef:
+                key: OSIRIS_HOST_PORT
+                name: osiris
+          - name: THOTH_DEPLOYMENT_NAME
+            valueFrom:
+              configMapKeyRef:
+                key: THOTH_DEPLOYMENT_NAME
+                name: osiris
+    triggers:
+    - type: ConfigChange
+    - type: ImageChange
+      imageChangeParams:
+        containerNames:
+          - osiris-observer
+        automatic: true
+        from:
+          kind: ImageStreamTag
+          name: osiris-observer:latest
