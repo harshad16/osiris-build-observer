@@ -41,7 +41,7 @@ _OSIRIS_HOST_PORT = os.getenv("OSIRIS_HOST_PORT", "5000")
 _OSIRIS_BUILD_START_HOOK = "/build/started"
 _OSIRIS_BUILD_COMPLETED_HOOK = "/build/completed"
 
-_THOTH_DEPLOYMENT_NAME = os.getenv('THOTH_DEPLOYMENT_NAME')  # TODO: get from oc/kube config?
+_THOTH_DEPLOYMENT_NAME = os.getenv('THOTH_DEPLOYMENT_NAME')  # TODO: get current namespace
 
 _KUBE_CONFIG = kubernetes.config.load_incluster_config()
 _KUBE_CONFIG.verify_ssl = False

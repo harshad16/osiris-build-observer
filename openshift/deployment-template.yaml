@@ -16,6 +16,7 @@ metadata:
     app: osiris
     component: osiris-observer
 
+objects:
 - apiVersion: v1
   kind: DeploymentConfig
   metadata:
