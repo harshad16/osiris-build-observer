@@ -45,10 +45,6 @@ objects:
             name: python:latest
             namespace: openshift
       triggers:
-      - type: GitHub
-        github: {}
-      - type: Generic
-        generic: {}
       - type: ConfigChange
       - type: ImageChange
         imageChange: {}

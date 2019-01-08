@@ -26,6 +26,7 @@ objects:
       component: osiris-observer
     name: osiris-observer
   spec:
+    replicas: 1
     selector:
       app: osiris
       component: osiris-observer
