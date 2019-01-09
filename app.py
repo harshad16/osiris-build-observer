@@ -43,9 +43,6 @@ _OSIRIS_BUILD_COMPLETED_HOOK = "/build/completed"
 
 _THOTH_DEPLOYMENT_NAME = os.getenv('THOTH_DEPLOYMENT_NAME')  # TODO: get current namespace
 
-_KUBE_CONFIG = kubernetes.config.load_incluster_config()
-_KUBE_CONFIG.verify_ssl = False
-
 _REQUESTS_MAX_RETRIES = 10
 
 
@@ -80,12 +77,20 @@ class RetrySession(requests.Session):
             self.mount(prefix, retry_adapter)
 
 
-def new_observer() -> kubernetes.client.CoreV1Api:
+def new_observer(config=None, in_cluster=True) -> kubernetes.client.CoreV1Api:
     """Create new api client."""
-    kubernetes.config.load_kube_config(client_configuration=_KUBE_CONFIG)
+    if in_cluster:
 
-    kube_api = kubernetes.client.ApiClient(_KUBE_CONFIG)
-    v1 = kubernetes.client.CoreV1Api(kube_api)
+        kubernetes.config.load_incluster_config()  # only usable within cluster
+        v1 = kubernetes.client.CoreV1Api()
+
+    else:
+
+        # load configuration
+        kubernetes.config.load_kube_config(client_configuration=config)
+
+        kube_api = kubernetes.client.ApiClient(config)
+        v1 = kubernetes.client.CoreV1Api(kube_api)
 
     return v1
 
@@ -135,7 +140,8 @@ if __name__ == "__main__":
                 continue
 
             build_info = BuildInfo.from_event(kube_event)
-            build_url = urljoin(_KUBE_CONFIG.host, build_info.ocp_info.self_link),
+            build_url = urljoin(client.api_client.configuration.host,
+                                build_info.ocp_info.self_link),
 
             schema = BuildInfoSchema()
             data, errors = schema.dump(build_info)
