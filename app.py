@@ -17,6 +17,7 @@ import logging
 import typing
 
 from http import HTTPStatus
+from pathlib import Path
 from requests.adapters import HTTPAdapter
 from requests.adapters import Retry
 from urllib.parse import urljoin
@@ -41,7 +42,7 @@ _OSIRIS_HOST_PORT = os.getenv("OSIRIS_HOST_PORT", "5000")
 _OSIRIS_BUILD_START_HOOK = "/build/started"
 _OSIRIS_BUILD_COMPLETED_HOOK = "/build/completed"
 
-_THOTH_DEPLOYMENT_NAME = os.getenv('THOTH_DEPLOYMENT_NAME')  # TODO: get current namespace
+_NAMESPACE = Path('/run/secrets/kubernetes.io/serviceaccount/namespace').read_text()
 
 _REQUESTS_MAX_RETRIES = 10
 
@@ -129,7 +130,7 @@ if __name__ == "__main__":
         )
 
         for streamed_event in watch.stream(client.list_namespaced_event,
-                                           namespace=_THOTH_DEPLOYMENT_NAME):
+                                           namespace=_NAMESPACE):
 
             kube_event: Event = streamed_event['object']
 

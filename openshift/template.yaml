@@ -104,11 +104,6 @@ objects:
                 configMapKeyRef:
                   key: OSIRIS_HOST_PORT
                   name: osiris
-            - name: THOTH_DEPLOYMENT_NAME
-              valueFrom:
-                configMapKeyRef:
-                  key: THOTH_DEPLOYMENT_NAME
-                  name: osiris
       triggers:
       - type: ConfigChange
       - type: ImageChange
