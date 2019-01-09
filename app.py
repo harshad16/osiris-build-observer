@@ -154,17 +154,25 @@ if __name__ == "__main__":
 
             prep_request = session.prepare_request(put_request)
 
-            _LOGGER.debug("[EVENT] Event to be posted: %r", kube_event)
-            _LOGGER.info("[EVENT] Posting event '%s' to: %s", kube_event.kind, put_request.url)
+            dry_run_prefix = "[DRY-RUN] " if os.getenv("DRY_RUN", False) else ""
 
-            resp = session.send(prep_request, timeout=60)
+            _LOGGER.debug("%s[EVENT] Event to be posted: %r", dry_run_prefix, kube_event)
+            _LOGGER.info("%s[EVENT] Posting event '%s' to: %s", dry_run_prefix, kube_event.kind, put_request.url)
 
-            if resp.status_code == HTTPStatus.ACCEPTED:
+            if not dry_run_prefix:
 
-                _LOGGER.info("[EVENT] Success.")
+                resp = session.send(prep_request, timeout=60)
+
+                if resp.status_code == HTTPStatus.ACCEPTED:
+
+                    _LOGGER.info("[EVENT] Success.")
+
+                else:
+
+                    _LOGGER.info("[EVENT] Failure.")
+                    _LOGGER.info("[EVENT] Status: %d  Reason: %r",
+                                 resp.status_code, resp.reason)
 
             else:
 
-                _LOGGER.info("[EVENT] Failure.")
-                _LOGGER.info("[EVENT] Status: %d  Reason: %r",
-                             resp.status_code, resp.reason)
+                _LOGGER.info("%sFinished.", dry_run_prefix)
