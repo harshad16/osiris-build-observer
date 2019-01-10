@@ -88,6 +88,7 @@ objects:
             deploymentconfig: osiris-observer
             service: osiris-observer
         spec:
+          serviceAccountName: analyzer
           replicas: 1
           containers:
           - image: osiris-observer:latest
