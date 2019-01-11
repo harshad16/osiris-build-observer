@@ -105,10 +105,10 @@ def _authenticate():
     login_resp = requests.post(
         url=urljoin(':'.join([_OSIRIS_HOST_NAME, _OSIRIS_HOST_PORT]),
                     _OSIRIS_LOGIN_ENDPOINT),
-        json=data
+        json=login_data
     )
 
-    if resp.status_code == HTTPStatus.ACCEPTED:
+    if login_resp.status_code == HTTPStatus.ACCEPTED:
 
         _LOGGER.info("[AUTHENTICATION] Success.")
 
