@@ -89,12 +89,17 @@ objects:
             service: osiris-observer
         spec:
           serviceAccountName: analyzer
-          replicas: 1
           containers:
           - image: osiris-observer:latest
             name: osiris-observer
             resources: {}
             env:
+            - name: DEBUG
+              value: 0
+            - name: DRY_RUN
+              value: 0
+            - name: OC_CLUSTER_SERVER
+              value: https://paas.upshift.redhat.com
             - name: OSIRIS_HOST_NAME
               valueFrom:
                 configMapKeyRef:
