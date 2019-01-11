@@ -91,7 +91,7 @@ class RetrySession(requests.Session):
             self.mount(prefix, retry_adapter)
 
 
-def _authenticate():
+def _authenticate(session: requests.Session):
     """Authenticate the Osiris API to the cluster with current credentials."""
     login_schema = LoginSchema()
 
@@ -99,14 +99,18 @@ def _authenticate():
         server=os.getenv('OC_CLUSTER_SERVER'),
         token=_KUBE_CONFIG.token
     )
-
     login_data, _ = login_schema.dump(login)
 
-    login_resp = requests.post(
+    post_request = requests.Request(
+        method='POST',
         url=urljoin(':'.join([_OSIRIS_HOST_NAME, _OSIRIS_HOST_PORT]),
                     _OSIRIS_LOGIN_ENDPOINT),
+        headers={'content-type': 'application/json'},
         json=login_data
     )
+    auth_request = session.prepare_request(post_request)
+
+    login_resp = session.send(auth_request, timeout=60)
 
     if login_resp.status_code == HTTPStatus.ACCEPTED:
 
@@ -141,12 +145,12 @@ def _is_osiris_event(event: Event) -> bool:
 
 if __name__ == "__main__":
 
-    # authenticate osiris api
-    _authenticate()
-
     watch = kubernetes.watch.Watch()
 
     with RetrySession() as session:
+
+        # authenticate osiris api
+        _authenticate(session)
 
         put_request = requests.Request(
                 url=':'.join([_OSIRIS_HOST_NAME, _OSIRIS_HOST_PORT]),
