@@ -26,6 +26,7 @@ import kubernetes
 from kubernetes.client.models.v1_event import V1Event as Event
 
 from osiris.utils import noexcept
+from osiris.schema.auth import Login, LoginSchema
 from osiris.schema.build import BuildInfo, BuildInfoSchema
 
 daiquiri.setup(
@@ -39,12 +40,24 @@ _LOGGER = daiquiri.getLogger()
 
 _OSIRIS_HOST_NAME = os.getenv("OSIRIS_HOST_NAME", "http://0.0.0.0")
 _OSIRIS_HOST_PORT = os.getenv("OSIRIS_HOST_PORT", "5000")
+_OSIRIS_LOGIN_ENDPOINT = "/auth/login"
 _OSIRIS_BUILD_START_HOOK = "/build/started"
 _OSIRIS_BUILD_COMPLETED_HOOK = "/build/completed"
 
 _NAMESPACE = Path('/run/secrets/kubernetes.io/serviceaccount/namespace').read_text()
 
 _REQUESTS_MAX_RETRIES = 10
+
+
+# kubernetes configuration
+
+SERVICE_TOKEN_FILENAME = "/var/run/secrets/kubernetes.io/serviceaccount/token"
+SERVICE_CERT_FILENAME = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+
+_KUBE_CONFIG = kubernetes.config.incluster_config.InClusterConfigLoader(
+    token_filename=SERVICE_TOKEN_FILENAME, cert_filename=SERVICE_CERT_FILENAME)
+_KUBE_CONFIG.load_and_set()
+_KUBE_CLIENT = kubernetes.client.CoreV1Api()
 
 
 class RetrySession(requests.Session):
@@ -78,22 +91,34 @@ class RetrySession(requests.Session):
             self.mount(prefix, retry_adapter)
 
 
-def new_observer(config=None, in_cluster=True) -> kubernetes.client.CoreV1Api:
-    """Create new api client."""
-    if in_cluster:
+def _authenticate():
+    """Authenticate the Osiris API to the cluster with current credentials."""
+    login_schema = LoginSchema()
 
-        kubernetes.config.load_incluster_config()  # only usable within cluster
-        v1 = kubernetes.client.CoreV1Api()
+    login = Login(
+        server=os.getenv('OC_CLUSTER_SERVER'),
+        token=_KUBE_CONFIG.token
+    )
+
+    login_data, _ = login_schema.dump(login)
+
+    login_resp = requests.post(
+        url=urljoin(':'.join([_OSIRIS_HOST_NAME, _OSIRIS_HOST_PORT]),
+                    _OSIRIS_LOGIN_ENDPOINT),
+        json=data
+    )
+
+    if resp.status_code == HTTPStatus.ACCEPTED:
+
+        _LOGGER.info("[AUTHENTICATION] Success.")
 
     else:
 
-        # load configuration
-        kubernetes.config.load_kube_config(client_configuration=config)
+        _LOGGER.info("[AUTHENTICATION] Failure.")
+        _LOGGER.info("[AUTHENTICATION] Status: %d  Reason: %r",
+                     login_resp.status_code, login_resp.reason)
 
-        kube_api = kubernetes.client.ApiClient(config)
-        v1 = kubernetes.client.CoreV1Api(kube_api)
-
-    return v1
+    return login_resp
 
 
 @noexcept
@@ -118,7 +143,9 @@ def _is_osiris_event(event: Event) -> bool:
 
 if __name__ == "__main__":
 
-    client = new_observer()
+    # authenticate osiris api
+    _authenticate()
+
     watch = kubernetes.watch.Watch()
 
     with RetrySession() as session:
@@ -129,19 +156,21 @@ if __name__ == "__main__":
                 headers={'content-type': 'application/json'}
         )
 
-        for streamed_event in watch.stream(client.list_namespaced_event,
+        _LOGGER.debug("Prepared request: %r", put_request)
+
+        for streamed_event in watch.stream(_KUBE_CLIENT.list_namespaced_event,
                                            namespace=_NAMESPACE):
 
             kube_event: Event = streamed_event['object']
 
-            _LOGGER.debug("[EVENT] New event received.")
-            _LOGGER.debug("[EVENT] Event kind: %s", kube_event.kind)
-
             if not _is_osiris_event(kube_event):
                 continue
 
+            _LOGGER.debug("[EVENT] New event received.")
+            _LOGGER.debug("[EVENT] Event kind: %s", kube_event.kind)
+
             build_info = BuildInfo.from_event(kube_event)
-            build_url = urljoin(client.api_client.configuration.host,
+            build_url = urljoin(_KUBE_CLIENT.api_client.configuration.host,
                                 build_info.ocp_info.self_link),
 
             schema = BuildInfoSchema()
@@ -157,6 +186,8 @@ if __name__ == "__main__":
             dry_run_prefix = "[DRY-RUN] " if os.getenv("DRY_RUN", False) else ""
 
             _LOGGER.debug("%s[EVENT] Event to be posted: %r", dry_run_prefix, kube_event)
+            _LOGGER.debug("%s[EVENT] Request: %r", dry_run_prefix, prep_request)
+
             _LOGGER.info("%s[EVENT] Posting event '%s' to: %s", dry_run_prefix, kube_event.kind, put_request.url)
 
             if not dry_run_prefix:
