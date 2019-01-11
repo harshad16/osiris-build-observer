@@ -136,8 +136,6 @@ def _is_osiris_event(event: Event) -> bool:
     # TODO: check for valid event names
     valid = _is_build_event(event) and event.reason in ['BuildStarted', 'BuildCompleted']
 
-    _LOGGER.debug("[EVENT] Event is valid osiris event: %r", valid)
-
     return valid
 
 
