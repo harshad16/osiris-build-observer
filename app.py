@@ -204,7 +204,7 @@ if __name__ == "__main__":
 
             osiris_endpoint = _OSIRIS_BUILD_COMPLETED_HOOK if build_info.build_complete() else _OSIRIS_BUILD_START_HOOK
 
-            put_request.url = urljoin(put_request.url, osiris_endpoint)
+            put_request.url = urljoin(put_request.url, osiris_endpoint, build_info.build_id)
             put_request.json = data
 
             prep_request = r3_session.prepare_request(put_request)
