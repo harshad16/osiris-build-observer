@@ -112,12 +112,12 @@ class RetrySession(requests.Session):
             self.mount(prefix, retry_adapter)
 
 
-def _authenticate(session: requests.Session, token: str = None):
+def _authenticate(session: requests.Session, server: str, token: str):
     """Authenticate the Osiris API to the cluster with current credentials."""
     login_schema = LoginSchema()
 
     login = Login(
-        server=os.getenv('OC_CLUSTER_SERVER'),
+        server=server,
         token=token
     )
     login_data, _ = login_schema.dump(login)
@@ -146,6 +146,12 @@ def _authenticate(session: requests.Session, token: str = None):
     return login_resp
 
 
+# TODO: perform authentication check by sending get request
+#   to oc endpoint via current session
+def _check_authenticated(session: requests.Session):
+    """Perform check whether current host is authenticated to OC."""
+
+
 @noexcept
 def _is_pod_event(event: Event) -> bool:
     return event.involved_object.kind == 'Pod'
@@ -171,10 +177,12 @@ if __name__ == "__main__":
     with RetrySession() as r3_session:
 
         # authenticate osiris api
-        oc_token = getattr(_KUBE_CONFIG, 'token', None) or os.getenv('OC_TOKEN', None)
-
-        if oc_token is not None:
-            _authenticate(r3_session, token=oc_token)
+        _authenticate(
+            session=r3_session,
+            server=getattr(_KUBE_CONFIG, 'host', None) or os.getenv('OC_HOST_NAME', None),
+            token=getattr(_KUBE_CONFIG, 'token', None) or os.getenv('OC_TOKEN', None)
+        )
+        _check_authenticated(session=r3_session)
 
         put_request = requests.Request(
                 url=':'.join([_OSIRIS_HOST_NAME, _OSIRIS_HOST_PORT]),
