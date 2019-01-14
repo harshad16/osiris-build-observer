@@ -211,6 +211,9 @@ if __name__ == "__main__":
             _LOGGER.debug("[EVENT] Reason: %s", kube_event.reason)
             _LOGGER.debug("[EVENT] Involved object: %s", kube_event.involved_object)
 
+            if _is_pod_event(kube_event):
+                continue
+
             # get associated pod and use it as a build_id
             build_info = BuildInfo.from_event(kube_event)
             build_url = urljoin(_KUBE_CLIENT.api_client.configuration.host,
