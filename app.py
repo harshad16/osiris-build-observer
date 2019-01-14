@@ -16,6 +16,8 @@ import daiquiri
 import logging
 import typing
 
+from functools import reduce
+
 from http import HTTPStatus
 from pathlib import Path
 from requests.adapters import HTTPAdapter
@@ -43,8 +45,8 @@ _LOGGER = daiquiri.getLogger()
 _OSIRIS_HOST_NAME = os.getenv("OSIRIS_HOST_NAME", "http://0.0.0.0")
 _OSIRIS_HOST_PORT = os.getenv("OSIRIS_HOST_PORT", "5000")
 _OSIRIS_LOGIN_ENDPOINT = "/auth/login"
-_OSIRIS_BUILD_START_HOOK = "/build/started"
-_OSIRIS_BUILD_COMPLETED_HOOK = "/build/completed"
+_OSIRIS_BUILD_START_HOOK = "/build/started/"
+_OSIRIS_BUILD_COMPLETED_HOOK = "/build/completed/"
 
 # oc namespace
 
@@ -76,6 +78,8 @@ else:  # default configuration, assumes current host logs in to the oc cluster b
     _KUBE_CONFIG = kubernetes.client.Configuration()
     _KUBE_CONFIG.host = os.getenv("OC_HOST_NAME", 'localhost')
     _KUBE_CONFIG.verify_ssl = False
+
+    kubernetes.config.load_kube_config(client_configuration=_KUBE_CONFIG)
 
     _KUBE_API = kubernetes.client.ApiClient(_KUBE_CONFIG)
     _KUBE_CLIENT = kubernetes.client.CoreV1Api(_KUBE_API)
@@ -212,7 +216,7 @@ if __name__ == "__main__":
 
             osiris_endpoint = _OSIRIS_BUILD_COMPLETED_HOOK if build_info.build_complete() else _OSIRIS_BUILD_START_HOOK
 
-            put_request.url = urljoin(put_request.url, osiris_endpoint, build_info.build_id)
+            put_request.url = reduce(urljoin, [put_request.url, osiris_endpoint, build_info.build_id])
             put_request.json = data
 
             prep_request = r3_session.prepare_request(put_request)
