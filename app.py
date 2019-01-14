@@ -32,8 +32,9 @@ from osiris.utils import noexcept
 from osiris.schema.auth import Login, LoginSchema
 from osiris.schema.build import BuildInfo, BuildInfoSchema
 
+
 daiquiri.setup(
-    level=logging.DEBUG if os.getenv('DEBUG', 'false') == 'true' else logging.INFO,
+    level=getattr(logging, os.getenv('LOGGING_LEVEL', 'INFO'), logging.INFO)
 )
 
 urllib3.disable_warnings(category=urllib3.exceptions.InsecureRequestWarning)
