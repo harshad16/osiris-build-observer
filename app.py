@@ -16,6 +16,7 @@ import daiquiri
 import logging
 import typing
 
+from collections import deque
 from functools import reduce
 
 from http import HTTPStatus
@@ -163,15 +164,16 @@ def _is_pod_event(event: Event) -> bool:
 
 @noexcept
 def _is_build_event(event: Event) -> bool:
-    return event.involved_object.kind == 'Build'
+    is_build = event.involved_object.kind == 'Build'
+    is_valid = event.reason in ['BuildStarted', 'BuildCompleted']
+
+    return is_build and is_valid
 
 
 @noexcept
-def _is_osiris_event(event: Event) -> bool:
+def _is_observed_event(event: Event) -> bool:
     # TODO: check for valid event names
-    valid = _is_build_event(event) and event.reason in ['BuildStarted', 'BuildCompleted']
-
-    return valid
+    return _is_build_event(event) or _is_pod_event(event)
 
 
 if __name__ == "__main__":
@@ -201,12 +203,15 @@ if __name__ == "__main__":
 
             kube_event: Event = streamed_event['object']
 
-            if not _is_osiris_event(kube_event):
+            if not _is_observed_event(kube_event):
+
                 continue
 
             _LOGGER.debug("[EVENT] New event received.")
-            _LOGGER.debug("[EVENT] Event kind: %s", kube_event.kind)
+            _LOGGER.debug("[EVENT] Reason: %s", kube_event.reason)
+            _LOGGER.debug("[EVENT] Involved object: %s", kube_event.involved_object)
 
+            # get associated pod and use it as a build_id
             build_info = BuildInfo.from_event(kube_event)
             build_url = urljoin(_KUBE_CLIENT.api_client.configuration.host,
                                 build_info.ocp_info.self_link),
