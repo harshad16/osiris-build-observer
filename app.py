@@ -9,6 +9,7 @@ endpoint for further processing.
 """
 
 import os
+import re
 import requests
 import urllib3
 
@@ -16,7 +17,6 @@ import daiquiri
 import logging
 import typing
 
-from collections import deque
 from functools import reduce
 
 from http import HTTPStatus
@@ -165,7 +165,8 @@ def _is_pod_event(event: Event) -> bool:
 @noexcept
 def _is_build_event(event: Event) -> bool:
     is_build = event.involved_object.kind == 'Build'
-    is_valid = event.reason in ['BuildStarted', 'BuildCompleted']
+    # check for [BuildStarted, BuildCompleted, BuildFailed, ...] events
+    is_valid = re.search(r'^Build', event.reason, flags=re.IGNORECASE)
 
     return is_build and is_valid
 
