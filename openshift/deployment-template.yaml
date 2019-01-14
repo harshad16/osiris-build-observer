@@ -50,11 +50,11 @@ objects:
           resources: {}
           env:
           - name: DEBUG
-            value: 0
+            value: 'false'
           - name: DRY_RUN
-            value: 0
-          - name: OC_CLUSTER_SERVER
-            value: https://paas.upshift.redhat.com
+            value: 'false'
+          - name: OC_HOST_NAME
+            value: 'https://paas.upshift.redhat.com'
           - name: OSIRIS_HOST_NAME
             valueFrom:
               configMapKeyRef:

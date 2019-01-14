@@ -30,7 +30,7 @@ from osiris.schema.auth import Login, LoginSchema
 from osiris.schema.build import BuildInfo, BuildInfoSchema
 
 daiquiri.setup(
-    level=logging.DEBUG if os.getenv('DEBUG', 0) else logging.INFO,
+    level=logging.DEBUG if os.getenv('DEBUG', 'false') == 'true' else logging.INFO,
 )
 
 urllib3.disable_warnings(category=urllib3.exceptions.InsecureRequestWarning)
@@ -217,7 +217,7 @@ if __name__ == "__main__":
 
             prep_request = r3_session.prepare_request(put_request)
 
-            dry_run_prefix = "[DRY-RUN] " if os.getenv("DRY_RUN", False) else ""
+            dry_run_prefix = "[DRY-RUN] " if os.getenv("DRY_RUN", 'false') == 'true' else ""
 
             _LOGGER.debug("%s[EVENT] Event to be posted: %r", dry_run_prefix, kube_event)
             _LOGGER.debug("%s[EVENT] Request: %r", dry_run_prefix, prep_request)
