@@ -7,6 +7,7 @@ name = "pypi"
 daiquiri = "*"
 kubernetes = "*"
 ujson = "*"
+osiris = {editable = true, ref = "master", git = "git://github.com/CermakM/osiris"}
 
 [dev-packages]
 

@@ -38,26 +38,47 @@ urllib3.disable_warnings(category=urllib3.exceptions.InsecureRequestWarning)
 
 _LOGGER = daiquiri.getLogger()
 
+# osiris configuration
+
 _OSIRIS_HOST_NAME = os.getenv("OSIRIS_HOST_NAME", "http://0.0.0.0")
 _OSIRIS_HOST_PORT = os.getenv("OSIRIS_HOST_PORT", "5000")
 _OSIRIS_LOGIN_ENDPOINT = "/auth/login"
 _OSIRIS_BUILD_START_HOOK = "/build/started"
 _OSIRIS_BUILD_COMPLETED_HOOK = "/build/completed"
 
-_NAMESPACE = Path('/run/secrets/kubernetes.io/serviceaccount/namespace').read_text()
+# oc namespace
+
+_NAMESPACE_FILENAME = '/run/secrets/kubernetes.io/serviceaccount/namespace'
+
+try:
+    _NAMESPACE = Path(_NAMESPACE_FILENAME).read_text()
+except FileNotFoundError:
+    _NAMESPACE = os.getenv("OC_NAMESPACE", None)
 
 _REQUESTS_MAX_RETRIES = 10
 
 
 # kubernetes configuration
 
-SERVICE_TOKEN_FILENAME = "/var/run/secrets/kubernetes.io/serviceaccount/token"
-SERVICE_CERT_FILENAME = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+_SERVICE_TOKEN_FILENAME = "/var/run/secrets/kubernetes.io/serviceaccount/token"
+_SERVICE_CERT_FILENAME = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
 
-_KUBE_CONFIG = kubernetes.config.incluster_config.InClusterConfigLoader(
-    token_filename=SERVICE_TOKEN_FILENAME, cert_filename=SERVICE_CERT_FILENAME)
-_KUBE_CONFIG.load_and_set()
-_KUBE_CLIENT = kubernetes.client.CoreV1Api()
+if Path(_SERVICE_TOKEN_FILENAME).exists():  # in-cluster configuration
+
+    _KUBE_CONFIG = kubernetes.config.incluster_config.InClusterConfigLoader(
+        token_filename=_SERVICE_TOKEN_FILENAME, cert_filename=_SERVICE_CERT_FILENAME)
+    _KUBE_CONFIG.load_and_set()
+
+    _KUBE_CLIENT = kubernetes.client.CoreV1Api()
+    _KUBE_API = _KUBE_CLIENT.api_client
+
+else:  # default configuration, assumes current host logs in to the oc cluster by himself
+    _KUBE_CONFIG = kubernetes.client.Configuration()
+    _KUBE_CONFIG.host = os.getenv("OC_HOST_NAME", 'localhost')
+    _KUBE_CONFIG.verify_ssl = False
+
+    _KUBE_API = kubernetes.client.ApiClient(_KUBE_CONFIG)
+    _KUBE_CLIENT = kubernetes.client.CoreV1Api(_KUBE_API)
 
 
 class RetrySession(requests.Session):
@@ -91,13 +112,13 @@ class RetrySession(requests.Session):
             self.mount(prefix, retry_adapter)
 
 
-def _authenticate(session: requests.Session):
+def _authenticate(session: requests.Session, token: str = None):
     """Authenticate the Osiris API to the cluster with current credentials."""
     login_schema = LoginSchema()
 
     login = Login(
         server=os.getenv('OC_CLUSTER_SERVER'),
-        token=_KUBE_CONFIG.token
+        token=token
     )
     login_data, _ = login_schema.dump(login)
 
@@ -147,10 +168,13 @@ if __name__ == "__main__":
 
     watch = kubernetes.watch.Watch()
 
-    with RetrySession() as session:
+    with RetrySession() as r3_session:
 
         # authenticate osiris api
-        _authenticate(session)
+        oc_token = getattr(_KUBE_CONFIG, 'token', None) or os.getenv('OC_TOKEN', None)
+
+        if oc_token is not None:
+            _authenticate(r3_session, token=oc_token)
 
         put_request = requests.Request(
                 url=':'.join([_OSIRIS_HOST_NAME, _OSIRIS_HOST_PORT]),
@@ -183,7 +207,7 @@ if __name__ == "__main__":
             put_request.url = urljoin(put_request.url, osiris_endpoint)
             put_request.json = data
 
-            prep_request = session.prepare_request(put_request)
+            prep_request = r3_session.prepare_request(put_request)
 
             dry_run_prefix = "[DRY-RUN] " if os.getenv("DRY_RUN", False) else ""
 
@@ -194,7 +218,7 @@ if __name__ == "__main__":
 
             if not dry_run_prefix:
 
-                resp = session.send(prep_request, timeout=60)
+                resp = r3_session.send(prep_request, timeout=60)
 
                 if resp.status_code == HTTPStatus.ACCEPTED:
 
