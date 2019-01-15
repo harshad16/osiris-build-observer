@@ -160,12 +160,6 @@ def _authenticate(session: requests.Session, server: str, token: str):
     return login_resp
 
 
-# TODO: perform authentication check by sending get request
-#   to oc endpoint via current session
-def _check_authenticated(session: requests.Session):
-    """Perform check whether current host is authenticated to OC."""
-
-
 @noexcept
 def _is_pod_event(event: Event) -> bool:
     return event.involved_object.kind == 'Pod'
@@ -198,7 +192,6 @@ if __name__ == "__main__":
             server=getattr(_KUBE_CONFIG, 'host', None) or os.getenv('OC_HOST_NAME', None),
             token=getattr(_KUBE_CONFIG, 'token', None) or os.getenv('OC_TOKEN', None)
         )
-        _check_authenticated(session=r3_session)
 
         put_request = requests.Request(
                 url=':'.join([_OSIRIS_HOST_NAME, _OSIRIS_HOST_PORT]),
@@ -249,20 +242,27 @@ if __name__ == "__main__":
 
             if not dry_run_prefix:
 
-                resp = r3_session.send(prep_request, timeout=60)
+                try:
+                    resp = r3_session.send(prep_request, timeout=60)
 
-                if resp.status_code == HTTPStatus.ACCEPTED:
+                except urllib3.exceptions.MaxRetryError:
 
-                    _LOGGER.info("[EVENT] Success.")
+                    _LOGGER.error("[EVENT] Failure. Max retries exceeded. Skipping.")
 
                 else:
 
-                    _LOGGER.info("[EVENT] Failure.")
-                    _LOGGER.info("[EVENT] Status: %d  Reason: %r",
-                                 resp.status_code, resp.reason)
+                    if resp.status_code == HTTPStatus.ACCEPTED:
 
-                _LOGGER.debug("[EVENT] Status: %d  Reason: %r  Response: %r",
-                              resp.status_code, resp.reason, resp.json)
+                        _LOGGER.info("[EVENT] Success.")
+
+                    else:
+
+                        _LOGGER.info("[EVENT] Failure.")
+                        _LOGGER.info("[EVENT] Status: %d  Reason: %r",
+                                     resp.status_code, resp.reason)
+
+                    _LOGGER.debug("[EVENT] Status: %d  Reason: %r  Response: %r",
+                                  resp.status_code, resp.reason, resp.json)
 
             else:
 
