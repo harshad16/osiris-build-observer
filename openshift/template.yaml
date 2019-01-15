@@ -94,8 +94,6 @@ objects:
             name: osiris-observer
             resources: {}
             env:
-            - name: DEBUG
-              value: 'false'
             - name: DRY_RUN
               value: 'false'
             - name: OC_HOST_NAME

@@ -36,7 +36,7 @@ from osiris.schema.build import BuildInfo, BuildInfoSchema
 
 
 daiquiri.setup(
-    level=getattr(logging, os.getenv('LOGGING_LEVEL', 'INFO'), logging.INFO)
+    level=getattr(logging, os.getenv('LOG_LEVEL', 'INFO'), logging.INFO)
 )
 
 urllib3.disable_warnings(category=urllib3.exceptions.InsecureRequestWarning)
@@ -244,7 +244,7 @@ if __name__ == "__main__":
 
             _LOGGER.debug("%s[EVENT] Event to be posted: %r", dry_run_prefix, kube_event)
             _LOGGER.debug("%s[EVENT] Request: %r", dry_run_prefix, prep_request)
-            
+
             _LOGGER.info("%s[EVENT] Posting event '%s' to: %s", dry_run_prefix, kube_event.kind, put_request.url)
 
             if not dry_run_prefix:
