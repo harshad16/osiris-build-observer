@@ -10,12 +10,14 @@ endpoint for further processing.
 
 import os
 import re
+import time
+import typing
+
 import requests
 import urllib3
 
 import daiquiri
 import logging
-import typing
 
 from functools import reduce
 
@@ -200,6 +202,8 @@ if __name__ == "__main__":
 
         _LOGGER.debug("Prepared request: %r", put_request)
 
+        _LOGGER.info(f"Watching for events in {_NAMESPACE} namespace ...")
+
         for streamed_event in watch.stream(_KUBE_CLIENT.list_namespaced_event,
                                            namespace=_NAMESPACE):
 
@@ -207,6 +211,7 @@ if __name__ == "__main__":
 
             if not _is_observed_event(kube_event):
 
+                time.sleep(5)  # there are probably no events atm so no need to process quickly
                 continue
 
             _LOGGER.debug("[EVENT] New event received.")
