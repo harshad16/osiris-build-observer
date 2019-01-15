@@ -154,6 +154,9 @@ def _authenticate(session: requests.Session, server: str, token: str):
         _LOGGER.info("%s Status: %d  Reason: %r",
                      logging_prefix, login_resp.status_code, login_resp.reason)
 
+    _LOGGER.debug("%s Status: %d  Reason: %r  Response: %r",
+                  logging_prefix, login_resp.reason, login_resp.status_code, login_resp.json)
+
     return login_resp
 
 
@@ -203,8 +206,6 @@ if __name__ == "__main__":
                 headers={'content-type': 'application/json'}
         )
 
-        _LOGGER.debug("Prepared request: %r", put_request)
-
         _LOGGER.info(f"Watching for events in {_NAMESPACE} namespace ...")
 
         for streamed_event in watch.stream(_KUBE_CLIENT.list_namespaced_event,
@@ -243,7 +244,7 @@ if __name__ == "__main__":
 
             _LOGGER.debug("%s[EVENT] Event to be posted: %r", dry_run_prefix, kube_event)
             _LOGGER.debug("%s[EVENT] Request: %r", dry_run_prefix, prep_request)
-
+            
             _LOGGER.info("%s[EVENT] Posting event '%s' to: %s", dry_run_prefix, kube_event.kind, put_request.url)
 
             if not dry_run_prefix:
@@ -259,6 +260,9 @@ if __name__ == "__main__":
                     _LOGGER.info("[EVENT] Failure.")
                     _LOGGER.info("[EVENT] Status: %d  Reason: %r",
                                  resp.status_code, resp.reason)
+
+                _LOGGER.debug("[EVENT] Status: %d  Reason: %r  Response: %r",
+                              resp.status_code, resp.reason, resp.json)
 
             else:
 
