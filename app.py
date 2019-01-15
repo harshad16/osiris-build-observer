@@ -123,6 +123,7 @@ class RetrySession(requests.Session):
 def _authenticate(session: requests.Session, server: str, token: str):
     """Authenticate the Osiris API to the cluster with current credentials."""
     login_schema = LoginSchema()
+    logging_prefix = "[AUTHENTICATION]"
 
     login = Login(
         server=server,
@@ -139,17 +140,19 @@ def _authenticate(session: requests.Session, server: str, token: str):
     )
     auth_request = session.prepare_request(post_request)
 
+    _LOGGER.info("%s Authenticating.", logging_prefix)
+
     login_resp = session.send(auth_request, timeout=60)
 
     if login_resp.status_code == HTTPStatus.ACCEPTED:
 
-        _LOGGER.info("[AUTHENTICATION] Success.")
+        _LOGGER.info("%s, Success.", logging_prefix)
 
     else:
 
-        _LOGGER.info("[AUTHENTICATION] Failure.")
-        _LOGGER.info("[AUTHENTICATION] Status: %d  Reason: %r",
-                     login_resp.status_code, login_resp.reason)
+        _LOGGER.info("%s Failure.", logging_prefix)
+        _LOGGER.info("%s Status: %d  Reason: %r",
+                     logging_prefix, login_resp.status_code, login_resp.reason)
 
     return login_resp
 
