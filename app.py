@@ -188,7 +188,7 @@ if __name__ == "__main__":
             dry_run_prefix = "[DRY-RUN] " if os.getenv("DRY_RUN", 'false') == 'true' else ""
 
             _LOGGER.debug("%s[EVENT] Event to be posted: %r", dry_run_prefix, kube_event)
-            _LOGGER.debug("%s[EVENT] Request: %r", dry_run_prefix, prep_request)
+            _LOGGER.debug("%s[EVENT] Request: %s", dry_run_prefix, prep_request.body.decode('utf-8'))
 
             _LOGGER.info("%s[EVENT] Posting event '%s' to: %s", dry_run_prefix, kube_event.kind, put_request.url)
 
@@ -213,7 +213,7 @@ if __name__ == "__main__":
                         _LOGGER.info("[EVENT] Status: %d  Reason: %r",
                                      resp.status_code, resp.reason)
 
-                    _LOGGER.debug("[EVENT] Status: %d  Reason: %r  Response: %r",
+                    _LOGGER.debug("[EVENT] Status: %d  Reason: %r  Response: %s",
                                   resp.status_code, resp.reason, resp.json)
 
             else:
