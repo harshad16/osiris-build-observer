@@ -31,7 +31,6 @@ import kubernetes
 from kubernetes.client.models.v1_event import V1Event as Event
 
 from osiris.utils import noexcept
-from osiris.schema.auth import Login, LoginSchema
 from osiris.schema.build import BuildInfo, BuildInfoSchema
 
 
@@ -120,46 +119,6 @@ class RetrySession(requests.Session):
             self.mount(prefix, retry_adapter)
 
 
-def _authenticate(session: requests.Session, server: str, token: str):
-    """Authenticate the Osiris API to the cluster with current credentials."""
-    login_schema = LoginSchema()
-    logging_prefix = "[AUTHENTICATION]"
-
-    login = Login(
-        server=server,
-        token=token
-    )
-    login_data, _ = login_schema.dump(login)
-
-    post_request = requests.Request(
-        method='POST',
-        url=urljoin(':'.join([_OSIRIS_HOST_NAME, _OSIRIS_HOST_PORT]),
-                    _OSIRIS_LOGIN_ENDPOINT),
-        headers={'content-type': 'application/json'},
-        json=login_data
-    )
-    auth_request = session.prepare_request(post_request)
-
-    _LOGGER.info("%s Authenticating.", logging_prefix)
-
-    login_resp = session.send(auth_request, timeout=60)
-
-    if login_resp.status_code == HTTPStatus.ACCEPTED:
-
-        _LOGGER.info("%s, Success.", logging_prefix)
-
-    else:
-
-        _LOGGER.info("%s Failure.", logging_prefix)
-        _LOGGER.info("%s Status: %d  Reason: %r",
-                     logging_prefix, login_resp.status_code, login_resp.reason)
-
-    _LOGGER.debug("%s Status: %d  Reason: %r  Response: %r",
-                  logging_prefix, login_resp.reason, login_resp.status_code, login_resp.json)
-
-    return login_resp
-
-
 @noexcept
 def _is_pod_event(event: Event) -> bool:
     return event.involved_object.kind == 'Pod'
@@ -185,13 +144,6 @@ if __name__ == "__main__":
     watch = kubernetes.watch.Watch()
 
     with RetrySession() as r3_session:
-
-        # authenticate osiris api
-        _authenticate(
-            session=r3_session,
-            server=getattr(_KUBE_CONFIG, 'host', None) or os.getenv('OC_HOST_NAME', None),
-            token=getattr(_KUBE_CONFIG, 'token', None) or os.getenv('OC_TOKEN', None)
-        )
 
         put_request = requests.Request(
                 url=':'.join([_OSIRIS_HOST_NAME, _OSIRIS_HOST_PORT]),
