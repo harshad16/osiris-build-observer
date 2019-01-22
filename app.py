@@ -16,8 +16,8 @@ import typing
 import requests
 import urllib3
 
-import daiquiri
 import logging
+import daiquiri.formatter
 
 from functools import reduce
 
@@ -33,15 +33,30 @@ from kubernetes.client.models.v1_event import V1Event as Event
 from osiris.utils import noexcept
 from osiris.schema.build import BuildInfo, BuildInfoSchema
 
-
-daiquiri.setup(
-    level=getattr(logging, os.getenv('LOG_LEVEL', 'INFO'), logging.INFO)
-)
-
 urllib3.disable_warnings(category=urllib3.exceptions.InsecureRequestWarning)
 
+DEFAULT_LOGGING_FORMAT = (
+    "%(asctime)s [%(process)d] %(color)s%(levelname)-8.8s "
+    "%(name)s: %(dry_run_prefix)s%(app_prefix)s%(event_prefix)s %(message)s%(color_stop)s"
+)
 
-_LOGGER = daiquiri.getLogger()
+output_formatter = daiquiri.formatter.ColorFormatter(
+    fmt=DEFAULT_LOGGING_FORMAT
+)
+output_stream = daiquiri.output.Stream(formatter=output_formatter)
+
+daiquiri.setup(
+    level=getattr(logging, os.getenv('LOG_LEVEL', 'INFO'), logging.INFO),
+    outputs=[
+        output_stream
+    ]
+)
+
+_DRY_RUN = os.getenv("DRY_RUN", 'false') == 'true'
+_LOGGER = daiquiri.getLogger(
+    dry_run_prefix='[DRY_RUN] ' if _DRY_RUN else '', app_prefix='[OBSERVER]', event_prefix='[EVENT]'
+)
+
 
 # osiris configuration
 
@@ -143,29 +158,32 @@ if __name__ == "__main__":
 
     watch = kubernetes.watch.Watch()
 
+    put_request = requests.Request(
+        url=':'.join([_OSIRIS_HOST_NAME, _OSIRIS_HOST_PORT]),
+        method='PUT',
+        headers={
+            'content-type': 'application/json'
+        }
+    )
+
     with RetrySession() as r3_session:
 
-        put_request = requests.Request(
-                url=':'.join([_OSIRIS_HOST_NAME, _OSIRIS_HOST_PORT]),
-                method='PUT',
-                headers={'content-type': 'application/json'}
-        )
-
-        _LOGGER.info(f"Watching for events in {_NAMESPACE} namespace ...")
+        _LOGGER.info(f"Watching for events in {_NAMESPACE} namespace ...", event_prefix="")
 
         for streamed_event in watch.stream(_KUBE_CLIENT.list_namespaced_event,
                                            namespace=_NAMESPACE):
 
             kube_event: Event = streamed_event['object']
+            kube_event_raw = streamed_event['raw_object']
 
             if not _is_observed_event(kube_event):
 
-                time.sleep(5)  # there are probably no events atm so no need to process quickly
+                time.sleep(5)  # there are probably no events atm so keep calm and observe
                 continue
 
-            _LOGGER.debug("[EVENT] New event received.")
-            _LOGGER.debug("[EVENT] Reason: %s", kube_event.reason)
-            _LOGGER.debug("[EVENT] Involved object: %s", kube_event.involved_object)
+            _LOGGER.debug("New event received.")
+            _LOGGER.debug("Reason: %s", kube_event.reason)
+            _LOGGER.debug("Involved object: \n%s", kube_event.involved_object)
 
             if _is_pod_event(kube_event):
                 continue
@@ -185,37 +203,35 @@ if __name__ == "__main__":
 
             prep_request = r3_session.prepare_request(put_request)
 
-            dry_run_prefix = "[DRY-RUN] " if os.getenv("DRY_RUN", 'false') == 'true' else ""
+            _LOGGER.debug("Event to be posted: \n%r", kube_event_raw)
+            _LOGGER.debug("Request: %s", prep_request.body.decode('utf-8'))
 
-            _LOGGER.debug("%s[EVENT] Event to be posted: %r", dry_run_prefix, kube_event)
-            _LOGGER.debug("%s[EVENT] Request: %s", dry_run_prefix, prep_request.body.decode('utf-8'))
+            _LOGGER.info("Posting event '%s' to: %s", kube_event.kind, put_request.url)
 
-            _LOGGER.info("%s[EVENT] Posting event '%s' to: %s", dry_run_prefix, kube_event.kind, put_request.url)
-
-            if not dry_run_prefix:
+            if not _DRY_RUN:
 
                 try:
                     resp = r3_session.send(prep_request, timeout=60)
 
                 except urllib3.exceptions.MaxRetryError:
 
-                    _LOGGER.error("[EVENT] Failure. Max retries exceeded. Skipping.")
+                    _LOGGER.error("Failure. Max retries exceeded. Skipping.")
 
                 else:
 
                     if resp.status_code == HTTPStatus.ACCEPTED:
 
-                        _LOGGER.info("[EVENT] Success.")
+                        _LOGGER.info("Success.")
 
                     else:
 
-                        _LOGGER.info("[EVENT] Failure.")
-                        _LOGGER.info("[EVENT] Status: %d  Reason: %r",
+                        _LOGGER.info("Failure.")
+                        _LOGGER.info("Status: %d  Reason: %r",
                                      resp.status_code, resp.reason)
 
-                    _LOGGER.debug("[EVENT] Status: %d  Reason: %r  Response: %s",
+                    _LOGGER.debug("Status: %d  Reason: %r  Response: %s",
                                   resp.status_code, resp.reason, resp.json)
 
             else:
 
-                _LOGGER.info("%sFinished.", dry_run_prefix)
+                _LOGGER.info("Finished.")
