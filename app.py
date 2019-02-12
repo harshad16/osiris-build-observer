@@ -10,6 +10,7 @@ endpoint for further processing.
 
 import os
 import re
+import sys
 import time
 import typing
 
@@ -30,8 +31,6 @@ from urllib.parse import urljoin
 import kubernetes
 from kubernetes.client.models.v1_event import V1Event as Event
 
-from osiris.utils import noexcept
-from osiris.schema.build import BuildInfo, BuildInfoSchema
 
 urllib3.disable_warnings(category=urllib3.exceptions.InsecureRequestWarning)
 
@@ -103,6 +102,23 @@ else:  # default configuration, assumes current host logs in to the oc cluster b
     _KUBE_CLIENT = kubernetes.client.CoreV1Api(_KUBE_API)
 
 
+def noexcept(fun: typing.Callable):
+    """Decorate non-throwing function."""
+    def _inner(*args, **kwargs):
+
+        ret = None
+        # noinspection PyBroadException
+        try:
+            ret = fun(*args, **kwargs)
+        except Exception as exc:
+            # TODO: log caught exception warnging
+            print("[WARNING] Exception caught:", exc, file=sys.stderr)
+
+        return ret
+
+    return _inner
+
+
 class RetrySession(requests.Session):
 
     """RetrySession class.
@@ -163,6 +179,9 @@ if __name__ == "__main__":
         method='PUT',
         headers={
             'content-type': 'application/json'
+        },
+        params={
+            'schema': 'event'
         }
     )
 
@@ -189,17 +208,15 @@ if __name__ == "__main__":
                 continue
 
             # get associated pod and use it as a build_id
-            build_info = BuildInfo.from_event(kube_event)
-            build_url = urljoin(_KUBE_CLIENT.api_client.configuration.host,
-                                build_info.ocp_info.self_link),
+            if __name__ == '__main__':
+                build_url = urljoin(_KUBE_CLIENT.api_client.configuration.host,
+                                    kube_event.metadata.self_link)
 
-            schema = BuildInfoSchema()
-            data, errors = schema.dump(build_info)
+            build_complete = not re.search(r"start", kube_event.reason, re.IGNORECASE)
+            osiris_endpoint = _OSIRIS_BUILD_COMPLETED_HOOK if build_complete else _OSIRIS_BUILD_START_HOOK
 
-            osiris_endpoint = _OSIRIS_BUILD_COMPLETED_HOOK if build_info.build_complete() else _OSIRIS_BUILD_START_HOOK
-
-            put_request.url = reduce(urljoin, [put_request.url, osiris_endpoint, build_info.build_id])
-            put_request.json = data
+            put_request.url = reduce(urljoin, [put_request.url, osiris_endpoint, kube_event.involved_object.name])
+            put_request.json = kube_event_raw
 
             prep_request = r3_session.prepare_request(put_request)
 
