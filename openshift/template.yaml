@@ -96,7 +96,7 @@ objects:
             env:
             - name: DRY_RUN
               value: 'false'
-            - name: OC_HOST_NAME
+            - name: OPENSHIFT_API_URL
               value: ***REMOVED***
             - name: OSIRIS_HOST_NAME
               valueFrom:
