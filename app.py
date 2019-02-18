@@ -47,7 +47,7 @@ from thoth.common import OpenShift
 from thoth.common import init_logging
 
 
-init_logging()
+init_logging({"thoth.osiris_build_observer": os.getenv("LOG_LEVEL", logging.INFO)})
 
 _LOGGER = logging.getLogger("thoth.osiris_build_observer")
 
@@ -58,6 +58,8 @@ urllib3.disable_warnings(category=urllib3.exceptions.InsecureRequestWarning)
 
 _OSIRIS_HOST_NAME = os.getenv("OSIRIS_HOST_NAME", "http://0.0.0.0")
 _OSIRIS_HOST_PORT = os.getenv("OSIRIS_HOST_PORT", "5000")
+
+_OSIRIS_BUILD_LOGS_URL = "/build/logs/"
 _OSIRIS_BUILD_START_HOOK = "/build/started/"
 _OSIRIS_BUILD_COMPLETED_HOOK = "/build/completed/"
 
@@ -141,7 +143,7 @@ class RetrySession(requests.Session):
                              resp.status_code, resp.reason)
 
             _LOGGER.debug("Status: %d  Reason: %r  Response: %s",
-                          resp.status_code, resp.reason, resp.json)
+                          resp.status_code, resp.reason, resp.json())
 
 
 if __name__ == "__main__":
@@ -155,7 +157,8 @@ if __name__ == "__main__":
             'content-type': 'application/json'
         },
         params={
-            'mode': 'cluster'
+            'mode': 'cluster',
+            'force': 1
         }
     )
 
@@ -173,7 +176,7 @@ if __name__ == "__main__":
             _LOGGER.debug("Config: \n%s", kube_event.status.config)
 
             build_id = kube_event.metadata.name
-            build_complete = re.search(r"complete", kube_event.status.phase, re.IGNORECASE)
+            build_complete = re.search(r"Complete", kube_event.status.phase, re.IGNORECASE)
 
             build_log = {}
 
@@ -205,7 +208,11 @@ if __name__ == "__main__":
             r3_session.send_request(build_info_request)
 
             if build_complete:
+
+                put_request.url = reduce(urljoin, [
+                    put_request.url, _OSIRIS_BUILD_LOGS_URL, build_id])
                 put_request.json = build_log
+
                 build_log_request = r3_session.prepare_request(put_request)
 
                 _LOGGER.info("Posting build log to: %s", put_request.url)
