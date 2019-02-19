@@ -93,7 +93,6 @@ def noexcept(fun: typing.Callable):
 
 
 class RetrySession(requests.Session):
-
     """RetrySession class.
 
     RetrySession attempts to retry failed requests and timeouts
@@ -107,7 +106,7 @@ class RetrySession(requests.Session):
                  adapter_prefixes: typing.List[str] = None,
                  status_forcelist: typing.Tuple[int] = (500, 502, 504),
                  method_whitelist: typing.List[str] = None):
-
+        """Initialize RetrySession."""
         super(RetrySession, self).__init__()
 
         adapter_prefixes = adapter_prefixes or ["http://", "https://"]
