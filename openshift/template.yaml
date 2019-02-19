@@ -133,7 +133,6 @@ parameters:
     name: GITHUB_REF
     value: 'master'
 
-parameters:
   - description: Tag of the ImageStream to use
     displayName: ImageStream Tag
     required: true
