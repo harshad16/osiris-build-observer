@@ -17,59 +17,59 @@ metadata:
     component: osiris-observer
 
 objects:
-- apiVersion: v1
-  kind: DeploymentConfig
-  metadata:
-    creationTimestamp: null
-    labels:
-      app: osiris
-      component: osiris-observer
-    name: osiris-observer
-  spec:
-    replicas: 1
-    selector:
-      app: osiris
-      component: osiris-observer
-      deploymentconfig: osiris-observer
-      service: osiris-observer
-    strategy:
-      resources: {}
-    template:
-      metadata:
-        creationTimestamp: null
-        labels:
-          app: osiris
-          component: osiris-observer
-          deploymentconfig: osiris-observer
-          service: osiris-observer
-      spec:
-        serviceAccountName: analyzer
-        containers:
-        - image: osiris-observer:latest
-          name: osiris-observer
-          resources: {}
-          env:
-          - name: DRY_RUN
-            value: 'false'
-          - name: OPENSHIFT_API_URL
-            value: '***REMOVED***'
-          - name: OSIRIS_HOST_NAME
-            valueFrom:
-              configMapKeyRef:
-                key: OSIRIS_HOST_NAME
-                name: osiris
-          - name: OSIRIS_HOST_PORT
-            valueFrom:
-              configMapKeyRef:
-                key: OSIRIS_HOST_PORT
-                name: osiris
-    triggers:
-    - type: ConfigChange
-    - type: ImageChange
-      imageChangeParams:
-        containerNames:
-          - osiris-observer
-        automatic: true
-        from:
-          kind: ImageStreamTag
-          name: osiris-observer:latest
+  - apiVersion: v1
+    kind: DeploymentConfig
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: osiris
+        component: osiris-observer
+      name: osiris-observer
+    spec:
+      replicas: 1
+      selector:
+        app: osiris
+        component: osiris-observer
+        deploymentconfig: osiris-observer
+        service: osiris-observer
+      strategy:
+        resources: {}
+      template:
+        metadata:
+          creationTimestamp: null
+          labels:
+            app: osiris
+            component: osiris-observer
+            deploymentconfig: osiris-observer
+            service: osiris-observer
+        spec:
+          serviceAccountName: analyzer
+          containers:
+            - image: osiris-observer:latest
+              name: osiris-observer
+              resources: {}
+              env:
+                - name: DRY_RUN
+                  value: 'false'
+                - name: OPENSHIFT_API_URL
+                  value: '***REMOVED***'
+                - name: OSIRIS_HOST_NAME
+                  valueFrom:
+                    configMapKeyRef:
+                      key: OSIRIS_HOST_NAME
+                      name: osiris
+                - name: OSIRIS_HOST_PORT
+                  valueFrom:
+                    configMapKeyRef:
+                      key: OSIRIS_HOST_PORT
+                      name: osiris
+      triggers:
+        - type: ConfigChange
+        - type: ImageChange
+          imageChangeParams:
+            containerNames:
+              - osiris-observer
+            automatic: true
+            from:
+              kind: ImageStreamTag
+              name: osiris-observer:latest
