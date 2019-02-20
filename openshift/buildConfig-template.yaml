@@ -49,12 +49,12 @@ objects:
             - name: UPGRADE_PIP_TO_LATEST
               value: ''
       triggers:
-      - type: GitHub
-        github:
-          secret: "osiris-observer-build-trigger"
-      - type: ConfigChange
-      - type: ImageChange
-        automatic: {}
+        - type: GitHub
+          github:
+            secret: "osiris-observer-build-trigger"
+        - type: ConfigChange
+        - type: ImageChange
+          automatic: {}
 
 parameters:
   - description: Name of the github repository for Thoth's Osiris Observer
