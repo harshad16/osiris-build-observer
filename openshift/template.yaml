@@ -96,7 +96,7 @@ objects:
             env:
             - name: DRY_RUN
               value: 'false'
-            - name: OC_HOST_NAME
+            - name: OPENSHIFT_API_URL
               value: https://paas.upshift.redhat.com
             - name: OSIRIS_HOST_NAME
               valueFrom:
@@ -133,7 +133,6 @@ parameters:
     name: GITHUB_REF
     value: 'master'
 
-parameters:
   - description: Tag of the ImageStream to use
     displayName: ImageStream Tag
     required: true

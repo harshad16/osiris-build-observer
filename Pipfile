@@ -7,7 +7,8 @@ name = "pypi"
 daiquiri = "*"
 kubernetes = "*"
 ujson = "*"
-osiris = {editable = true, ref = "master", git = "git://github.com/CermakM/osiris"}
+thoth-common = "*"
+openshift = "*"
 
 [dev-packages]
 
