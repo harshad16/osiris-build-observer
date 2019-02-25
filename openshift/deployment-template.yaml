@@ -55,8 +55,6 @@ objects:
                   value: '0'
                 - name: MIDDLETIER_NAMESPACE
                   value: thoth-test-core
-                - name: OPENSHIFT_API_URL
-                  value: '***REMOVED***'
                 - name: OSIRIS_HOST_NAME
                   value: ${OSIRIS_HOST_URL}
                 - name: OSIRIS_HOST_PORT

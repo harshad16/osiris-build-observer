@@ -9,7 +9,7 @@
       jobs:
         - "trigger-build":
             vars:
-              webhook_url: "***REMOVED***/oapi/v1/namespaces/thoth-test-core/buildconfigs/osiris-observer/webhooks"
+              webhook_url: "https://paas.upshift.redhat.com/oapi/v1/namespaces/thoth-test-core/buildconfigs/osiris-observer/webhooks"
     kebechet-auto-gate:
       jobs:
         - "thoth-coala"
