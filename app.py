@@ -100,7 +100,8 @@ class RetrySession(requests.Session):
     progressively prolonged for a certain amount of retries.
     """
 
-    _REQUESTS_MAX_RETRIES = 10
+    _REQUEST_BACKOFF_FACTOR = 60  # determines sleep time
+    _REQUESTS_MAX_RETRIES = 5
 
     def __init__(self,
                  adapter_prefixes: typing.List[str] = None,
@@ -114,7 +115,7 @@ class RetrySession(requests.Session):
         retry_config = Retry(
             total=self._REQUESTS_MAX_RETRIES,
             connect=self._REQUESTS_MAX_RETRIES,
-            backoff_factor=5,  # determines sleep time
+            backoff_factor=self._REQUEST_BACKOFF_FACTOR,
             status_forcelist=status_forcelist,
             method_whitelist=method_whitelist
         )
