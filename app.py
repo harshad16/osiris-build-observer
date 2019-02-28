@@ -105,7 +105,6 @@ class RetrySession(requests.Session):
 
     def __init__(self,
                  adapter_prefixes: typing.List[str] = None,
-                 status_forcelist: typing.Tuple[int] = (500, 502, 504),
                  method_whitelist: typing.List[str] = None):
         """Initialize RetrySession."""
         super(RetrySession, self).__init__()
@@ -116,7 +115,6 @@ class RetrySession(requests.Session):
             total=self._REQUESTS_MAX_RETRIES,
             connect=self._REQUESTS_MAX_RETRIES,
             backoff_factor=self._REQUEST_BACKOFF_FACTOR,
-            status_forcelist=status_forcelist,
             method_whitelist=method_whitelist
         )
         retry_adapter = HTTPAdapter(max_retries=retry_config)
