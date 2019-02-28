@@ -123,25 +123,20 @@ class RetrySession(requests.Session):
             self.mount(prefix, retry_adapter)
 
     def send_request(self, request):
-        """Send request and wrap it in try-except block."""
-        try:
-            resp = self.send(request, timeout=60)
+        """Send request and return whether it was successful."""
+        resp = self.send(request, timeout=60)
 
-        except urllib3.exceptions.MaxRetryError:
-            _LOGGER.error("Failure. Max retries exceeded. Skipping.")
+        success = resp.status_code == HTTPStatus.ACCEPTED
 
+        if success:
+            _LOGGER.info("Success.")
         else:
-            if resp.status_code == HTTPStatus.ACCEPTED:
+            _LOGGER.info("Failure.")
 
-                _LOGGER.info("Success.")
-            else:
+        _LOGGER.debug("Status: %d  Reason: %r  Response: %s",
+                      resp.status_code, resp.reason, resp.json())
 
-                _LOGGER.info("Failure.")
-                _LOGGER.info("Status: %d  Reason: %r",
-                             resp.status_code, resp.reason)
-
-            _LOGGER.debug("Status: %d  Reason: %r  Response: %s",
-                          resp.status_code, resp.reason, resp.json())
+        return success
 
 
 if __name__ == "__main__":
@@ -176,21 +171,27 @@ if __name__ == "__main__":
             build_id = kube_event.metadata.name
             build_complete = re.search(r"Complete", kube_event.status.phase, re.IGNORECASE)
 
-            build_log = {}
+            build_log = {
+                'data': None,
+                'metadata': {
+                    # TODO: more useful metadata?
+                    'build_id': build_id
+                }
+            }
 
             if build_complete:
 
-                build_log_data = _OPENSHIFT_CLIENT.get_build_log(  # TODO: can log level be modified?
-                    build_id=build_id,
-                    namespace=_NAMESPACE
-                )
-                build_log = {
-                    'data': build_log_data,
-                    'metadata': {
-                        # TODO: more useful metadata?
-                        'build_id': build_id
-                    }
-                }
+                try:
+                    build_log['data'] = _OPENSHIFT_CLIENT.get_build_log(
+                        build_id=build_id,
+                        namespace=_NAMESPACE
+                    )
+                except requests.exceptions.HTTPError as exc:
+                    _LOGGER.debug(
+                        "OpenShift master response for build log (%d): %r",
+                        exc
+                    )
+
                 osiris_endpoint = _OSIRIS_BUILD_COMPLETED_HOOK
 
             else:
@@ -203,9 +204,9 @@ if __name__ == "__main__":
 
             _LOGGER.info("Posting event '%s' to: %s", kube_event.kind, put_request.url)
 
-            r3_session.send_request(build_info_request)
+            successful = r3_session.send_request(build_info_request)
 
-            if build_complete:
+            if build_complete and successful:
 
                 put_request.url = reduce(urljoin, [
                     put_request.url, _OSIRIS_BUILD_LOGS_URL, build_id])
