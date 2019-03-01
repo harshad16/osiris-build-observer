@@ -126,7 +126,9 @@ class RetrySession(requests.Session):
         """Send request and return whether it was successful."""
         resp = self.send(request, timeout=60)
 
-        success = resp.status_code == HTTPStatus.ACCEPTED
+        success = resp.status_code in (
+            HTTPStatus.ACCEPTED, HTTPStatus.CREATED, HTTPStatus.OK
+        )
 
         if success:
             _LOGGER.info("Success.")
@@ -150,8 +152,7 @@ if __name__ == "__main__":
             'content-type': 'application/json'
         },
         params={
-            'mode': 'cluster',
-            'force': 1
+            'mode': 'remote',
         }
     )
 
