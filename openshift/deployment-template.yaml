@@ -58,7 +58,7 @@ objects:
                 - name: OSIRIS_HOST_NAME
                   value: ${OSIRIS_HOST_URL}
                 - name: OSIRIS_HOST_PORT
-                  value: '5000'
+                  value: '8000'
                 - name: OVERWRITE_EXISTING_LOGS
                   value: '1'
       triggers:
